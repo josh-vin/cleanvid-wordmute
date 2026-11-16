@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cleanvid-wordmute"
+version = "0.1.0"
+description = "Wrapper around mmguero/cleanvid that mutes only the flagged word instead of the whole subtitle line"
+requires-python = ">=3.11"
+dependencies = [
+    "cleanvid==1.7.1",
+    "pysrt",
+]
+
+[project.optional-dependencies]
+transcribe = ["stable-ts[fw]==2.19.1"]
+test = ["pytest"]
+
+[project.scripts]
+wordmute = "wordmute.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

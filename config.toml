@@ -1,0 +1,93 @@
+# cleanvid-wordmute settings. ${WORDMUTE_DATA} is the data folder given to run.sh (see the README), which
+# mounts it at its own path, so these are real host paths.
+
+[paths]
+# Clean videos: <output_root>/<Show>/Season NN/<Show> - SxxEyy.mkv
+output_root = "${WORDMUTE_DATA}/out"
+# Episodes with unresolved words go here instead. Default: <output_root>/_needs-review.
+# If output_root is ever a Plex library folder, point this somewhere Plex does not scan.
+review_root = ""
+# Per-episode reports: mutes.csv, review.csv, status.json, clips/, manual.csv
+reports_root = "${WORDMUTE_DATA}/reports"
+# Scratch: extracted subtitles, audio clips, cached transcriptions
+work_dir = "${WORDMUTE_DATA}/work"
+# {show} {season} {episode} {stem} are available
+name_template = "{show} - S{season:02d}E{episode:02d}"
+
+[clip]
+# Seconds of audio kept before and after each flagged subtitle line
+padding = 1.0
+# "auto": use the centre (dialogue) channel when the audio has one, else mix to mono. "mix": always mix.
+channel = "auto"
+
+[transcribe]
+engine = "stable-ts"          # stable-ts on the faster-whisper backend
+model = "medium.en"           # no NVIDIA GPU here, so: CPU, int8
+device = "cpu"
+compute_type = "int8"
+language = "en"
+cpu_threads = 8               # of 12 on this machine; 0 = let the backend decide
+# A heard word is only trusted when it clears these; otherwise it goes to review with its time suggested.
+# The word must already match the subtitle and sit inside its line, so the confidence floor is low.
+min_word_probability = 0.1
+max_word_seconds = 2.0
+
+[mute]
+# Seconds muted before and after the word itself
+word_pad = 0.10
+# A word counts for a subtitle line when it is heard within the line's time span plus this slack
+window_tolerance = 0.5
+
+[find]
+# Further ways of timing a word the first transcription did not give. What they find is marked in the
+# match column of mutes.csv. A find is used when it is sure by its own measure below, or when two
+# different ways agree on the same spot; otherwise it is only suggested in the review files.
+# Transcribe the full mix when the centre channel alone did not have the word (shouts, songs).
+retry_with_mix = true
+# Mute the gap between the heard words either side of it ("a stupid ___ knob"). Sure when the gap is no
+# longer than this and no more than this many other subtitle words are missing from it too.
+between = true
+between_max_seconds = 1.5
+between_max_extra_words = 2
+# Transcribe again, primed with the subtitle text. Sure at this confidence.
+relisten = true
+relisten_min_probability = 0.5
+# Line the subtitle text up with the audio. Sure at this confidence.
+align = true
+align_min_probability = 0.5
+
+[unheard]
+# What is done about a flagged word that could not be timed by any of the above.
+# A line that is nothing but flagged words ("Fuck.", "Shit. Shit. Shit.") is muted from start to end,
+# with this much either side. other_words lets a line with that many other words count too
+# ("Fuck off.", "Oh, shit."); 0 = flagged words only. Longer lines than max_seconds are left out.
+whole_line = true
+whole_line_other_words = 1
+whole_line_max_seconds = 6.0
+whole_line_pad = 0.25
+# Otherwise mute the best guess, when there is one no longer than transcribe.max_word_seconds.
+mute_best_guess = true
+# With no guess either, the word was most likely never said aloud (or was already muted with a line
+# next to it). false: the episode is finished anyway and the word is only listed in review.csv.
+# true: the episode is held in the needs-review folder until manual.csv settles it.
+hold = false
+
+[review]
+# Seconds of audio either side of the suggested span in the review clips
+clip_margin = 0.75
+
+[cleanvid]
+subtitle_language = "eng"
+swears_file = ""              # empty = the list shipped with cleanvid
+# Words added to that list (same form as its lines: word, or word|replacement for the subtitles)
+extra_swears = ["fuckity", "fuckwitch"]
+embed_subs = true             # masked subtitles embedded in the output, as in the existing clean files
+full_subs = true
+audio_params = "-c:a eac3 -b:a 640k"
+# audio_stream_index = 1      # only needed when a file has more than one audio stream
+
+
+[subtitles]
+# Remove {\an8}-style positioning tags (shown as text by many players) and invisible or control characters
+# from the subtitles that go into the clean file. <i> italics and accented letters are kept.
+tidy = true
